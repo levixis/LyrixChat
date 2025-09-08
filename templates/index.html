@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en" class=""> <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LyrixChat</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style type="text/tailwindcss">
+        /* Custom base styles and components */
+        @layer base {
+            body {
+                font-family: 'Inter', sans-serif;
+            }
+        }
+        
+        /* Custom class for the chat window scrollbar */
+        #chat-window::-webkit-scrollbar {
+            width: 6px;
+        }
+        #chat-window::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        #chat-window::-webkit-scrollbar-thumb {
+            background-color: #94a3b8; /* slate-400 */
+            border-radius: 20px;
+        }
+
+        /* Animation for incoming messages */
+        .message-pop-in {
+            animation: popIn 0.3s cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
+            transform: scale(0.95);
+            opacity: 0;
+        }
+        @keyframes popIn {
+            from {
+                transform: scale(0.95);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        /* Styles for the theme switcher toggle */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #f97316; /* orange-500 */
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #f97316; /* orange-500 */
+        }
+    </style>
+
+    <script>
+        // Set Tailwind dark mode configuration
+        tailwind.config = {
+            darkMode: 'class', // Enable class-based dark mode
+        }
+    </script>
+</head>
+
+<body class="bg-gray-100 dark:bg-slate-900 transition-colors duration-300 flex items-center justify-center min-h-screen p-2 sm:p-4">
+
+    <div id="chat-container" class="w-full max-w-2xl h-[95vh] sm:h-[90vh] flex flex-col bg-white dark:bg-slate-800 rounded-2xl shadow-2xl overflow-hidden border border-gray-200 dark:border-slate-700">
+        
+        <header class="flex items-center justify-between p-4 bg-slate-700 dark:bg-slate-900/70 text-white shadow-md z-10">
+            <h1 class="text-xl font-bold tracking-wider">LyrixChat</h1>
+            <div class="flex items-center space-x-2">
+                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+                <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                    <input type="checkbox" name="toggle" id="theme-switcher" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                    <label for="theme-switcher" class="toggle-label block overflow-hidden h-6 rounded-full bg-slate-300 cursor-pointer"></label>
+                </div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+            </div>
+        </header>
+
+        <main id="chat-window" class="flex-1 p-4 sm:p-6 space-y-6 overflow-y-auto">
+            </main>
+
+        <footer class="p-4 bg-white dark:bg-slate-800 border-t border-gray-200 dark:border-slate-700">
+            <form id="chat-form" class="flex items-center space-x-3">
+                <input id="message-input" type="text" placeholder="Ask for lyrics (e.g., Hotel California by Eagles)" class="flex-1 w-full px-4 py-3 bg-gray-100 dark:bg-slate-700 text-gray-800 dark:text-gray-200 rounded-full border-2 border-transparent focus:outline-none focus:border-orange-500 transition-colors duration-300" autocomplete="off">
+                <button type="submit" class="flex-shrink-0 bg-orange-500 hover:bg-orange-600 text-white rounded-full p-3 transition-transform duration-200 ease-in-out hover:scale-110 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-opacity-50">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
+                    </svg>
+                </button>
+            </form>
+            <p class="text-center text-xs text-slate-400 dark:text-slate-500 mt-3">Crafted with ❤️ by levixis</p>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Element References ---
+            const chatWindow = document.getElementById('chat-window');
+            const chatForm = document.getElementById('chat-form');
+            const messageInput = document.getElementById('message-input');
+            const themeSwitcher = document.getElementById('theme-switcher');
+
+            // --- Dark Mode Logic ---
+            const userTheme = localStorage.getItem('theme');
+            const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+            const themeCheck = () => {
+                if (userTheme === 'dark' || (!userTheme && systemTheme)) {
+                    document.documentElement.classList.add('dark');
+                    themeSwitcher.checked = true;
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    themeSwitcher.checked = false;
+                }
+            };
+            
+            const themeSwitch = () => {
+                if (document.documentElement.classList.contains('dark')) {
+                    document.documentElement.classList.remove('dark');
+                    localStorage.setItem('theme', 'light');
+                } else {
+                    document.documentElement.classList.add('dark');
+                    localStorage.setItem('theme', 'dark');
+                }
+            };
+
+            themeSwitcher.addEventListener('click', themeSwitch);
+            themeCheck(); // Initial check on page load
+
+
+            // --- Chat Message Rendering Functions ---
+            const scrollToBottom = () => {
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+            };
+
+            const addMessage = (html, sender) => {
+                const messageWrapper = document.createElement('div');
+                messageWrapper.className = `flex message-pop-in ${sender === 'user' ? 'justify-end' : 'justify-start'}`;
+                messageWrapper.innerHTML = html;
+                chatWindow.appendChild(messageWrapper);
+                scrollToBottom();
+            };
+            
+            const showLoadingIndicator = () => {
+                const loadingHTML = `
+                    <div id="loading-indicator" class="flex justify-start message-pop-in">
+                        <div class="bg-gray-200 dark:bg-slate-600 text-gray-800 dark:text-gray-200 p-3 rounded-lg max-w-sm">
+                            <div class="flex items-center space-x-1">
+                                <span class="w-2 h-2 bg-slate-400 rounded-full animate-pulse" style="animation-delay: 0.1s;"></span>
+                                <span class="w-2 h-2 bg-slate-400 rounded-full animate-pulse" style="animation-delay: 0.2s;"></span>
+                                <span class="w-2 h-2 bg-slate-400 rounded-full animate-pulse" style="animation-delay: 0.3s;"></span>
+                            </div>
+                        </div>
+                    </div>`;
+                chatWindow.insertAdjacentHTML('beforeend', loadingHTML);
+                scrollToBottom();
+            };
+            
+            const removeLoadingIndicator = () => {
+                const indicator = document.getElementById('loading-indicator');
+                if (indicator) {
+                    indicator.remove();
+                }
+            };
+
+            const renderWelcomeMessage = () => {
+                const welcomeHTML = `
+                    <div class="bg-gray-200 dark:bg-slate-700 text-gray-800 dark:text-gray-200 p-4 rounded-xl max-w-sm shadow">
+                        <p class="font-semibold">Welcome!</p>
+                        <p class="text-sm">Ask me for song lyrics or info.</p>
+                    </div>`;
+                addMessage(welcomeHTML, 'bot');
+            };
+
+            const renderUserMessage = (message) => {
+                const userMessageHTML = `
+                    <div class="bg-orange-500 text-white p-3 rounded-xl max-w-sm shadow">
+                        ${message}
+                    </div>`;
+                addMessage(userMessageHTML, 'user');
+            };
+
+            const renderLyricsCard = (data) => {
+                // Use a default image if album_art is missing
+                const albumArt = data.album_art || 'https://placehold.co/80x80/1e293b/a3a3a3?text=N/A';
+                const lyricsHTML = `
+                    <div class="bg-gray-200 dark:bg-slate-700 rounded-xl p-4 w-full max-w-lg shadow-lg">
+                        <div class="flex items-start space-x-4">
+                            <img src="${albumArt}" alt="Album Art" class="w-20 h-20 rounded-lg object-cover shadow-md">
+                            <div class="flex-1">
+                                <h2 class="font-bold text-lg text-gray-900 dark:text-white">${data.title}</h2>
+                                <p class="text-sm text-slate-600 dark:text-slate-300">${data.artist}</p>
+                            </div>
+                        </div>
+                        <div class="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600">
+                            <p class="text-gray-700 dark:text-gray-300 whitespace-pre-wrap text-sm leading-relaxed">${data.content}</p>
+                        </div>
+                        ${data.spotify_url ? `
+                        <div class="mt-4">
+                            <a href="${data.spotify_url}" target="_blank" rel="noopener noreferrer" class="block w-full text-center bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-300">
+                                Open in Spotify
+                            </a>
+                        </div>
+                        ` : ''}
+                    </div>`;
+                addMessage(lyricsHTML, 'bot');
+            };
+            
+            const renderErrorMessage = (message) => {
+                const errorHTML = `
+                    <div class="bg-red-100 dark:bg-red-900/40 border border-red-400 dark:border-red-600 text-red-700 dark:text-red-300 px-4 py-3 rounded-xl relative max-w-sm" role="alert">
+                        <strong class="font-bold">Oops!</strong>
+                        <span class="block sm:inline">${message}</span>
+                    </div>`;
+                addMessage(errorHTML, 'bot');
+            };
+
+            // --- Main Chat Logic ---
+            chatForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const message = messageInput.value.trim();
+                
+                if (!message) return;
+
+                renderUserMessage(message);
+                messageInput.value = '';
+                showLoadingIndicator();
+
+                // --- REAL BACKEND CONNECTION ---
+                const formData = new FormData();
+                formData.append('message', message);
+
+                fetch('/chat', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    removeLoadingIndicator();
+                    if (data.type === 'lyrics') {
+                        renderLyricsCard(data);
+                    } else if (data.type === 'error') {
+                        renderErrorMessage(data.content);
+                    }
+                })
+                .catch(error => {
+                    console.error('Fetch Error:', error);
+                    removeLoadingIndicator();
+                    renderErrorMessage(' A connection error occurred. Please make sure the server is running and try again.');
+                });
+            });
+
+            // --- Initial State ---
+            renderWelcomeMessage();
+        });
+    </script>
+
+</body>
+</html>

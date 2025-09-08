@@ -1,0 +1,215 @@
+import os
+import re
+import json
+import logging
+from flask import Flask, render_template, request, jsonify
+import requests
+from bs4 import BeautifulSoup
+import spotipy
+from spotipy.oauth2 import SpotifyClientCredentials
+import google.generativeai as genai
+from flask_cors import CORS
+from thefuzz import fuzz
+from dotenv import load_dotenv
+load_dotenv()
+
+
+# --- Basic Setup ---
+app = Flask(__name__)
+CORS(app)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+# --- API Credentials ---
+GENIUS_ACCESS_TOKEN = os.getenv('GENIUS_ACCESS_TOKEN')
+SPOTIFY_CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID')
+SPOTIFY_CLIENT_SECRET = os.getenv('SPOTIFY_CLIENT_SECRET')
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
+
+# --- API Client Initialization ---
+try:
+    sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(client_id=SPOTIFY_CLIENT_ID, client_secret=SPOTIFY_CLIENT_SECRET))
+    genai.configure(api_key=GEMINI_API_KEY)
+    gemini_model = genai.GenerativeModel('gemini-1.5-flash-latest')
+except Exception as e:
+    logging.error(f"Failed to initialize API clients: {e}")
+    sp = None
+    gemini_model = None
+
+
+# === THE FINAL PROMPT UPGRADE ===
+def interpret_user_request(user_query):
+    """
+    The prompt is now upgraded to explicitly correct spelling in lyric snippets.
+    """
+    prompt = f"""
+    You are an expert music query interpreter. Analyze the user's request and classify it.
+    Your main job is to correct spelling mistakes in song titles, artist names, AND lyric snippets to find the correct match.
+    Your response MUST be a single, valid JSON object.
+
+    1. If the request is a song title and/or artist, classify as 'title_search'.
+       - Example: "hottel califfornia by egles" -> {{"type": "title_search", "title": "Hotel California", "artist": "Eagles"}}
+       - Example: "Lunchbrake by seedhe mouth" -> {{"type": "title_search", "title": "Lunch Break", "artist": "Seedhe Maut"}}
+
+    2. If the request is a snippet of lyrics, classify as 'lyrics_search' and CORRECT THE SPELLING in the snippet.
+       - Example: "I'm waking up to ash and dust" -> {{"type": "lyrics_search", "lyrics_snippet": "I'm waking up to ash and dust"}}
+       - Example: "ooh im blinded by the lites" -> {{"type": "lyrics_search", "lyrics_snippet": "ooh I'm blinded by the lights"}}
+       - Example: "blending lits" -> {{"type": "lyrics_search", "lyrics_snippet": "Blinding Lights"}}
+
+    3. If the request is a greeting or help request, classify as 'intent'.
+       - Example: "hello there" -> {{"type": "intent", "value": "greeting"}}
+
+    Analyze this user query: "{user_query}"
+    """
+    try:
+        response = gemini_model.generate_content(prompt)
+        cleaned_text = response.text.strip().replace("```json", "").replace("```", "").strip()
+        logging.info(f"Gemini interpretation: {cleaned_text}")
+        return json.loads(cleaned_text)
+    except Exception as e:
+        logging.error(f"Gemini interpretation error: {e}")
+        return {"type": "intent", "value": "unclear"}
+
+
+def search_genius(song_name, artist_name=None, original_query=None):
+    # This robust two-step search function is now correct and needs no changes.
+    headers = {'Authorization': f'Bearer {GENIUS_ACCESS_TOKEN}'}
+
+    def find_best_match(search_term):
+        params = {'q': search_term}
+        logging.info(f"Attempting search with term: '{search_term}'")
+        
+        response = requests.get('https://api.genius.com/search', headers=headers, params=params)
+        response.raise_for_status()
+        data = response.json()
+        
+        best_hit = None
+        highest_score = 0
+        for hit in data.get('response', {}).get('hits', []):
+            if hit.get('type') == 'song':
+                song = hit.get('result', {})
+                genius_title = song.get('title', '').lower()
+                genius_artist = song.get('primary_artist', {}).get('name', '').lower()
+                
+                # Validation is against the AI-corrected `song_name` and `artist_name`
+                title_score = fuzz.token_set_ratio(song_name.lower(), genius_title)
+                artist_score = 100
+                if artist_name:
+                    artist_score = fuzz.token_set_ratio(artist_name.lower(), genius_artist)
+                
+                total_score = (title_score * 0.7) + (artist_score * 0.3)
+                if total_score > highest_score:
+                    highest_score = total_score
+                    best_hit = song
+        
+        if best_hit and highest_score > 70:
+            logging.info(f"Found best match '{best_hit.get('title')}' with validation score {highest_score}")
+            return best_hit
+        
+        logging.warning(f"Search with '{search_term}' failed. Highest score: {highest_score}")
+        return None
+
+    try:
+        if original_query:
+            result = find_best_match(original_query)
+            if result:
+                cover_art = result.get('song_art_image_thumbnail_url') or result.get('header_image_thumbnail_url') or ''
+                return {'url': result.get('url'), 'title': result.get('title'), 'artist': result.get('primary_artist', {}).get('name'), 'cover_art': cover_art}
+        
+        logging.info("Fallback: Searching with AI-corrected terms.")
+        corrected_search_term = f"{song_name} {artist_name}" if artist_name else song_name
+        result = find_best_match(corrected_search_term)
+        if result:
+            cover_art = result.get('song_art_image_thumbnail_url') or result.get('header_image_thumbnail_url') or ''
+            return {'url': result.get('url'), 'title': result.get('title'), 'artist': result.get('primary_artist', {}).get('name'), 'cover_art': cover_art}
+
+        return None
+        
+    except Exception as e:
+        logging.error(f"Genius API error: {e}")
+        return None
+
+
+# (No changes to scrape_lyrics, search_spotify_track, routes, etc.)
+def scrape_lyrics(url):
+    try:
+        response = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'})
+        soup = BeautifulSoup(response.text, 'html.parser')
+        lyrics_containers = soup.select("div[data-lyrics-container='true']")
+        if not lyrics_containers: return "Lyrics could not be scraped."
+        lyrics_html = "".join(container.decode_contents() for container in lyrics_containers)
+        lyrics_text = re.sub(r'<br/?>', '\n', lyrics_html)
+        lyrics_text = re.sub(r'<.*?>', '', lyrics_text)
+        return lyrics_text.strip()
+    except Exception as e:
+        logging.error(f"Lyrics scraping error: {e}")
+        return "Could not retrieve lyrics."
+
+def search_spotify_track(song_name, artist_name=None):
+    if not sp: return {}
+    try:
+        query = f'track:{song_name} artist:{artist_name}' if artist_name else f'track:{song_name}'
+        results = sp.search(q=query, type='track', limit=1)
+        if tracks := results['tracks']['items']:
+            track = tracks[0]
+            return {'album_art': track['album']['images'][0]['url'] if track['album']['images'] else None, 'preview_url': track.get('preview_url'), 'spotify_url': track['external_urls']['spotify']}
+        return {}
+    except Exception as e:
+        logging.error(f"Spotify error: {e}")
+        return {}
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/chat', methods=['POST'])
+def handle_chat():
+    message = request.form.get('message', '').strip()
+    if not message:
+        return jsonify({'type': 'error', 'content': 'Please enter a message!'})
+    
+    logging.info(f"Received user message: '{message}'")
+
+    parsed_request = interpret_user_request(message)
+    request_type = parsed_request.get('type')
+    genius_data = None
+
+    if request_type == 'title_search':
+        song_name = parsed_request.get('title')
+        artist_name = parsed_request.get('artist')
+        if song_name:
+            genius_data = search_genius(song_name, artist_name, original_query=message)
+
+    elif request_type == 'lyrics_search':
+        lyrics_snippet = parsed_request.get('lyrics_snippet')
+        if lyrics_snippet:
+            # The snippet is now corrected by the AI. We pass it as the "song_name" for validation.
+            genius_data = search_genius(song_name=lyrics_snippet, original_query=message)
+
+    elif request_type == 'intent':
+        intent_value = parsed_request.get('value')
+        if intent_value == 'greeting':
+            return jsonify({'type': 'message', 'content': '🎵 Hello! How can I help you find some lyrics?'})
+        else: # 'unclear' or 'help'
+            return jsonify({'type': 'message', 'content': 'I can find lyrics for you! Just type a song name or even a line from the song.'})
+
+    if not genius_data:
+        display_name = parsed_request.get('title') or parsed_request.get('lyrics_snippet') or message
+        return jsonify({'type': 'error', 'content': f"Sorry, I couldn't find lyrics for '{display_name}'."})
+
+    lyrics = scrape_lyrics(genius_data['url'])
+    spotify_data = search_spotify_track(genius_data['title'], genius_data['artist'])
+    album_art = spotify_data.get('album_art') or genius_data.get('cover_art')
+
+    return jsonify({
+        'type': 'lyrics',
+        'title': genius_data['title'],
+        'artist': genius_data['artist'],
+        'content': lyrics or 'Lyrics unavailable.',
+        'album_art': album_art,
+        'preview_url': spotify_data.get('preview_url'),
+        'spotify_url': spotify_data.get('spotify_url')
+    })
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=True)
