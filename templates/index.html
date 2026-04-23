@@ -102,7 +102,7 @@
         scene.add(torus);
 
         // Glass Sphere (Moved to top left edge)
-        const geometry = new THREE.SphereGeometry(2.5, 64, 64);
+        const geometry = new THREE.SphereGeometry(1.5, 64, 64);
         const material = new THREE.MeshPhysicalMaterial({
             color: 0xffffff,
             metalness: 0.1,
@@ -114,7 +114,7 @@
             clearcoatRoughness: 0.1,
         });
         const sphere = new THREE.Mesh(geometry, material);
-        sphere.position.set(-4, 3, -1);
+        sphere.position.set(-4.5, 2.5, -2);
         scene.add(sphere);
         
         // Secondary floating sphere (Right edge)
