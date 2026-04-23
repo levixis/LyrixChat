@@ -63,15 +63,15 @@
     </script>
 </head>
 
-<body class="bg-slate-50 dark:bg-slate-900 transition-colors duration-300 flex items-center justify-center min-h-screen p-2 sm:p-4 overflow-hidden relative">
+<body class="bg-slate-100 dark:bg-slate-950 transition-colors duration-300 flex items-center justify-center min-h-screen p-2 sm:p-4 overflow-hidden relative">
 
     <!-- 3D Canvas Background -->
     <canvas id="bg-canvas" class="absolute top-0 left-0 w-full h-full -z-10"></canvas>
 
     <!-- Glassmorphism Chat Container -->
-    <div id="chat-container" class="w-full max-w-2xl h-[95vh] sm:h-[90vh] flex flex-col bg-white/60 dark:bg-slate-800/60 backdrop-blur-2xl rounded-3xl shadow-[0_8px_32px_0_rgba(31,38,135,0.15)] overflow-hidden border border-white/50 dark:border-white/10 z-10 transition-all duration-300">
+    <div id="chat-container" class="w-full max-w-2xl h-[95vh] sm:h-[90vh] flex flex-col bg-white/20 dark:bg-slate-900/30 backdrop-blur-md rounded-3xl shadow-[0_8px_32px_0_rgba(31,38,135,0.2)] overflow-hidden border border-white/40 dark:border-white/10 z-10 transition-all duration-300">
         
-        <header class="flex items-center justify-between p-4 bg-slate-700/80 dark:bg-slate-900/60 backdrop-blur-md text-white shadow-sm z-10">
+        <header class="flex items-center justify-between p-4 bg-white/30 dark:bg-slate-900/40 backdrop-blur-lg text-gray-800 dark:text-white shadow-sm z-10 border-b border-white/20 dark:border-white/5">
             <h1 class="text-xl font-bold tracking-wider drop-shadow-md">LyrixChat</h1>
             <div class="flex items-center space-x-2">
                  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -113,17 +113,17 @@
 
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
-        camera.position.z = 6;
+        camera.position.z = 4.5; // Moved camera closer to make the sphere HUGE
 
         // Glassmorphism Sphere
         const geometry = new THREE.SphereGeometry(1.8, 64, 64);
         const material = new THREE.MeshPhysicalMaterial({
             color: 0xffffff,
-            metalness: 0.1,
-            roughness: 0.15,
-            transmission: 0.95, // glass effect
+            metalness: 0.2,
+            roughness: 0.1,
+            transmission: 1.0, // maximum glass effect
             ior: 1.5,
-            thickness: 1.5,
+            thickness: 2.0,
             clearcoat: 1.0,
             clearcoatRoughness: 0.1,
             transparent: true,
@@ -134,7 +134,7 @@
 
         // Inner Particles
         const particlesGeometry = new THREE.BufferGeometry();
-        const particlesCount = 300;
+        const particlesCount = 400; // More particles
         const posArray = new Float32Array(particlesCount * 3);
         for(let i=0; i < particlesCount * 3; i++) {
             // Random positions inside sphere
@@ -149,10 +149,10 @@
         particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
         
         const particlesMaterial = new THREE.PointsMaterial({
-            size: 0.03,
+            size: 0.04, // Larger particles
             color: 0xf97316, // Brand Orange
             transparent: true,
-            opacity: 0.8,
+            opacity: 1.0,
             blending: THREE.AdditiveBlending,
             depthWrite: false
         });
@@ -160,15 +160,15 @@
         scene.add(particlesMesh);
 
         // Lighting
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        const ambientLight = new THREE.AmbientLight(0xffffff, 1.0); // Brighter ambient
         scene.add(ambientLight);
 
-        const directionalLight = new THREE.DirectionalLight(0xf97316, 2.5); // Orange tint
-        directionalLight.position.set(2, 2, 2);
+        const directionalLight = new THREE.DirectionalLight(0xf97316, 4.0); // Brighter Orange tint
+        directionalLight.position.set(3, 3, 3);
         scene.add(directionalLight);
 
-        const blueLight = new THREE.DirectionalLight(0x38bdf8, 2); // Sky blue tint
-        blueLight.position.set(-2, -2, -2);
+        const blueLight = new THREE.DirectionalLight(0x38bdf8, 3.0); // Brighter Sky blue tint
+        blueLight.position.set(-3, -3, -3);
         scene.add(blueLight);
 
         // Animation Loop
