@@ -205,6 +205,32 @@ def scrape_lyrics(url):
         logging.error(f"Lyrics scraping error: {e}")
         return "Could not retrieve lyrics."
 
+def get_lyrics(title, artist, url):
+    """Try robust APIs first, fallback to scraping."""
+    # 1. Try LRCLIB
+    try:
+        search_query = f"{title} {artist}"
+        response = requests.get(f"https://lrclib.net/api/search?q={search_query}", timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            if data and len(data) > 0 and data[0].get('plainLyrics'):
+                return data[0]['plainLyrics']
+    except Exception as e:
+        logging.error(f"LRCLIB error: {e}")
+        
+    # 2. Try lyrics.ovh
+    try:
+        response = requests.get(f"https://api.lyrics.ovh/v1/{artist}/{title}", timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            if data and data.get('lyrics'):
+                return data['lyrics'].replace('\r\n', '\n')
+    except Exception as e:
+        logging.error(f"lyrics.ovh error: {e}")
+
+    # 3. Fallback to Genius Scraping (usually works locally but fails on cloud)
+    return scrape_lyrics(url)
+
 def search_spotify_track(song_name, artist_name=None):
     if not sp: return {}
     try:
@@ -243,7 +269,7 @@ def handle_chat():
         return jsonify({'type': 'error', 'content': f"Sorry, I couldn't find a confident match for '{message}'."})
 
     # Step 3: We have a winner, get the rest of the data
-    lyrics = scrape_lyrics(genius_data['url'])
+    lyrics = get_lyrics(genius_data['title'], genius_data['artist'], genius_data['url'])
     spotify_data = search_spotify_track(genius_data['title'], genius_data['artist'])
     album_art = spotify_data.get('album_art') or genius_data.get('cover_art')
 
