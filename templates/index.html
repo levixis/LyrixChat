@@ -66,10 +66,10 @@
             <!-- Chat messages appended here -->
         </main>
 
-        <footer class="p-5 bg-transparent border-t border-white/5">
-            <form id="chat-form" class="flex items-center space-x-3 relative">
-                <input id="message-input" type="text" placeholder="Ask for lyrics (e.g., Hotel California by Eagles)" class="flex-1 w-full px-5 py-4 bg-white/5 text-white placeholder-white/30 rounded-2xl border border-white/10 focus:outline-none focus:border-white/30 focus:bg-white/10 transition-all duration-300" autocomplete="off">
-                <button type="submit" id="send-btn" class="absolute right-2 bg-white/10 hover:bg-white/20 text-white rounded-xl p-3 border border-white/10 transition-all duration-300 ease-in-out hover:scale-105 focus:outline-none backdrop-blur-md">
+        <footer class="p-3 sm:p-5 bg-transparent border-t border-white/5 pb-8 sm:pb-5">
+            <form id="chat-form" class="flex items-center relative w-full">
+                <input id="message-input" type="text" placeholder="Ask for lyrics (e.g., Hotel California)" class="w-full pl-5 pr-14 py-4 bg-white/5 text-white placeholder-white/30 rounded-2xl border border-white/10 focus:outline-none focus:border-white/30 focus:bg-white/10 transition-all duration-300" autocomplete="off">
+                <button type="submit" id="send-btn" class="absolute right-2 bg-white/10 hover:bg-white/20 text-white rounded-xl p-2.5 sm:p-3 border border-white/10 transition-all duration-300 ease-in-out hover:scale-105 focus:outline-none backdrop-blur-md">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transform translate-x-0.5" viewBox="0 0 20 20" fill="currentColor">
                         <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
                     </svg>
@@ -98,10 +98,9 @@
             roughness: 0.15,
         });
         const torus = new THREE.Mesh(torusGeo, metallicMat);
-        torus.position.set(2, -4, -3); // Spilling out from bottom right
         scene.add(torus);
 
-        // Glass Sphere (Moved to top left edge)
+        // Glass Sphere
         const geometry = new THREE.SphereGeometry(1.5, 64, 64);
         const material = new THREE.MeshPhysicalMaterial({
             color: 0xffffff,
@@ -114,18 +113,31 @@
             clearcoatRoughness: 0.1,
         });
         const sphere = new THREE.Mesh(geometry, material);
-        sphere.position.set(-4.5, 2.5, -2);
         scene.add(sphere);
         
-        // Secondary floating sphere (Right edge)
+        // Secondary floating sphere
         const sphere2 = new THREE.Mesh(new THREE.SphereGeometry(1.5, 64, 64), metallicMat);
-        sphere2.position.set(5, 1, -2);
         scene.add(sphere2);
 
-        // Third floating sphere (Bottom left edge)
+        // Third floating sphere
         const sphere3 = new THREE.Mesh(new THREE.SphereGeometry(0.8, 32, 32), metallicMat);
-        sphere3.position.set(-4, -3, -1);
         scene.add(sphere3);
+
+        // Dynamic Positioning for Mobile
+        function updatePositions() {
+            const isMobile = window.innerWidth < 768;
+            torus.position.set(isMobile ? 1 : 2, isMobile ? -3 : -4, -3);
+            torus.scale.setScalar(isMobile ? 0.6 : 1);
+            
+            sphere.position.set(isMobile ? -1.5 : -4.5, isMobile ? 3 : 2.5, -2);
+            sphere.scale.setScalar(isMobile ? 0.8 : 1);
+            
+            sphere2.position.set(isMobile ? 2 : 5, isMobile ? 1.5 : 1, -2);
+            sphere2.scale.setScalar(isMobile ? 0.7 : 1);
+            
+            sphere3.position.set(isMobile ? -2 : -4, isMobile ? -2 : -3, -1);
+        }
+        updatePositions();
 
         // Lighting
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
@@ -196,6 +208,7 @@
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
+            updatePositions();
         });
 
         window.startSearchAnimation = () => {
