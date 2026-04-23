@@ -63,17 +63,21 @@
     </script>
 </head>
 
-<body class="bg-slate-100 dark:bg-slate-950 transition-colors duration-300 flex items-center justify-center min-h-screen p-2 sm:p-4 overflow-hidden relative">
+<body class="bg-[#050505] text-white font-sans transition-colors duration-300 flex items-center justify-center min-h-screen p-2 sm:p-4 overflow-hidden relative dark">
 
     <!-- 3D Canvas Background -->
     <canvas id="bg-canvas" class="absolute top-0 left-0 w-full h-full -z-10"></canvas>
 
     <!-- Glassmorphism Chat Container -->
-    <div id="chat-container" class="w-full max-w-2xl h-[95vh] sm:h-[90vh] flex flex-col bg-white/20 dark:bg-slate-900/30 backdrop-blur-md rounded-3xl shadow-[0_8px_32px_0_rgba(31,38,135,0.2)] overflow-hidden border border-white/40 dark:border-white/10 z-10 transition-all duration-300">
+    <div id="chat-container" class="w-full max-w-3xl h-[95vh] sm:h-[90vh] flex flex-col bg-white/[0.03] backdrop-blur-3xl rounded-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.8)] overflow-hidden border border-white/10 z-10 transition-all duration-300">
         
-        <header class="flex items-center justify-between p-4 bg-white/30 dark:bg-slate-900/40 backdrop-blur-lg text-gray-800 dark:text-white shadow-sm z-10 border-b border-white/20 dark:border-white/5">
-            <h1 class="text-xl font-bold tracking-wider drop-shadow-md">LyrixChat</h1>
+        <header class="flex items-center justify-between p-4 bg-transparent z-10 border-b border-white/5">
             <div class="flex items-center space-x-2">
+                <div class="w-3 h-3 rounded-full bg-red-500 shadow-sm"></div>
+                <div class="w-3 h-3 rounded-full bg-yellow-500 shadow-sm"></div>
+                <div class="w-3 h-3 rounded-full bg-green-500 shadow-sm"></div>
+            </div>
+            <h1 class="text-sm font-semibold tracking-widest text-white/50 uppercase">LyrixChat.ai</h1>
                  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
                 </svg>
@@ -87,13 +91,13 @@
             </div>
         </header>
 
-        <main id="chat-window" class="flex-1 p-4 sm:p-6 space-y-6 overflow-y-auto">
+        <main id="chat-window" class="flex-1 p-6 sm:p-8 space-y-8 overflow-y-auto">
             </main>
 
-        <footer class="p-4 bg-white/40 dark:bg-slate-800/40 backdrop-blur-md border-t border-gray-200/50 dark:border-slate-700/50">
+        <footer class="p-4 sm:p-6 bg-transparent border-t border-white/5">
             <form id="chat-form" class="flex items-center space-x-3">
-                <input id="message-input" type="text" placeholder="Ask for lyrics (e.g., Hotel California by Eagles)" class="flex-1 w-full px-4 py-3 bg-white/80 dark:bg-slate-900/60 text-gray-800 dark:text-gray-200 rounded-full border border-gray-200 dark:border-slate-600 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all duration-300 shadow-inner" autocomplete="off">
-                <button type="submit" id="send-btn" class="flex-shrink-0 bg-orange-500 hover:bg-orange-600 text-white rounded-full p-3 transition-transform duration-300 ease-in-out hover:scale-110 hover:shadow-lg hover:shadow-orange-500/50 focus:outline-none">
+                <input id="message-input" type="text" placeholder="Ask for lyrics..." class="flex-1 w-full px-5 py-4 bg-white/5 text-white placeholder-white/30 rounded-2xl border border-white/10 focus:outline-none focus:border-white/30 focus:bg-white/10 transition-all duration-300 shadow-inner" autocomplete="off">
+                <button type="submit" id="send-btn" class="flex-shrink-0 bg-white/10 hover:bg-white/20 text-white rounded-2xl p-4 border border-white/10 transition-all duration-300 ease-in-out hover:scale-105 focus:outline-none backdrop-blur-md">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 transform translate-x-0.5" viewBox="0 0 20 20" fill="currentColor">
                         <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
                     </svg>
@@ -113,63 +117,55 @@
 
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
-        camera.position.z = 4.5; // Moved camera closer to make the sphere HUGE
+        camera.position.z = 10;
 
-        // Glassmorphism Sphere
-        const geometry = new THREE.SphereGeometry(1.8, 64, 64);
+        // Metallic Torus (matching the reference image background)
+        const torusGeo = new THREE.TorusGeometry(3.5, 0.8, 64, 100);
+        const metallicMat = new THREE.MeshStandardMaterial({
+            color: 0x888888,
+            metalness: 1.0,
+            roughness: 0.1,
+        });
+        const torus = new THREE.Mesh(torusGeo, metallicMat);
+        torus.position.set(0, 0, -2);
+        scene.add(torus);
+
+        // Glass Sphere
+        const geometry = new THREE.SphereGeometry(1.5, 64, 64);
         const material = new THREE.MeshPhysicalMaterial({
             color: 0xffffff,
-            metalness: 0.2,
+            metalness: 0.1,
             roughness: 0.1,
-            transmission: 1.0, // maximum glass effect
+            transmission: 1.0,
             ior: 1.5,
-            thickness: 2.0,
+            thickness: 2.5,
             clearcoat: 1.0,
             clearcoatRoughness: 0.1,
-            transparent: true,
-            opacity: 1
         });
         const sphere = new THREE.Mesh(geometry, material);
+        sphere.position.set(-2.5, 1, 1);
         scene.add(sphere);
-
-        // Inner Particles
-        const particlesGeometry = new THREE.BufferGeometry();
-        const particlesCount = 400; // More particles
-        const posArray = new Float32Array(particlesCount * 3);
-        for(let i=0; i < particlesCount * 3; i++) {
-            // Random positions inside sphere
-            const radius = 1.7 * Math.cbrt(Math.random());
-            const theta = Math.random() * 2 * Math.PI;
-            const phi = Math.acos(2 * Math.random() - 1);
-            
-            posArray[i] = radius * Math.sin(phi) * Math.cos(theta);
-            posArray[i+1] = radius * Math.sin(phi) * Math.sin(theta);
-            posArray[i+2] = radius * Math.cos(phi);
-        }
-        particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
         
-        const particlesMaterial = new THREE.PointsMaterial({
-            size: 0.04, // Larger particles
-            color: 0xf97316, // Brand Orange
-            transparent: true,
-            opacity: 1.0,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false
-        });
-        const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
-        scene.add(particlesMesh);
+        // Secondary floating sphere
+        const sphere2 = new THREE.Mesh(new THREE.SphereGeometry(0.8, 32, 32), metallicMat);
+        sphere2.position.set(3, -2, 2);
+        scene.add(sphere2);
 
         // Lighting
-        const ambientLight = new THREE.AmbientLight(0xffffff, 1.0); // Brighter ambient
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
         scene.add(ambientLight);
 
-        const directionalLight = new THREE.DirectionalLight(0xf97316, 4.0); // Brighter Orange tint
-        directionalLight.position.set(3, 3, 3);
-        scene.add(directionalLight);
+        const light1 = new THREE.DirectionalLight(0xffffff, 3.0);
+        light1.position.set(5, 5, 5);
+        scene.add(light1);
 
-        const blueLight = new THREE.DirectionalLight(0x38bdf8, 3.0); // Brighter Sky blue tint
-        blueLight.position.set(-3, -3, -3);
-        scene.add(blueLight);
+        const light2 = new THREE.DirectionalLight(0x38bdf8, 2.0); // Subtle blue rim light
+        light2.position.set(-5, -5, -5);
+        scene.add(light2);
+        
+        const orangeLight = new THREE.PointLight(0xf97316, 0, 10); // Hidden orange light for search state
+        orangeLight.position.set(0, 0, 0);
+        scene.add(orangeLight);
 
         // Animation Loop
         const clock = new THREE.Clock();
@@ -180,18 +176,19 @@
             const elapsedTime = clock.getElapsedTime();
             
             // Idle float animation
-            sphere.position.y = Math.sin(elapsedTime * 0.8) * 0.15;
+            const t = elapsedTime * 0.5;
+            torus.rotation.x = t * 0.3;
+            torus.rotation.y = t * 0.2;
             
-            // Particle rotation
-            particlesMesh.rotation.y = elapsedTime * (isSearching ? 0.8 : 0.1);
-            particlesMesh.rotation.x = elapsedTime * (isSearching ? 0.4 : 0.05);
+            sphere.position.y = 1 + Math.sin(t) * 0.2;
+            sphere2.position.y = -2 + Math.cos(t * 1.5) * 0.2;
             
             if (isSearching) {
-                // Pulse effect
-                sphere.scale.setScalar(1 + Math.sin(elapsedTime * 5) * 0.04);
+                torus.rotation.x += 0.02;
+                torus.rotation.y += 0.02;
+                orangeLight.intensity = 10 + Math.sin(elapsedTime * 10) * 5;
             } else {
-                // Smoothly return to normal scale
-                sphere.scale.lerp(new THREE.Vector3(1, 1, 1), 0.1);
+                orangeLight.intensity = gsap.utils.interpolate(orangeLight.intensity, 0, 0.1);
             }
             
             renderer.render(scene, camera);
@@ -230,40 +227,21 @@
         // Global animation triggers
         window.startSearchAnimation = () => {
             isSearching = true;
-            gsap.to(directionalLight, { intensity: 6, duration: 1, ease: "power2.out" });
-            gsap.to(blueLight, { intensity: 4, duration: 1, ease: "power2.out" });
-            gsap.to(particlesMaterial, { size: 0.08, duration: 1, ease: "power2.out" });
-            
-            // Impact Ripple effect on submit
-            gsap.fromTo(sphere.scale, 
-                {x: 0.8, y: 0.8, z: 0.8}, 
-                {x: 1.1, y: 1.1, z: 1.1, duration: 0.6, ease: "elastic.out(1, 0.3)"}
-            );
+            gsap.to(torus.scale, {x: 1.1, y: 1.1, z: 1.1, duration: 1, ease: "power2.out"});
         };
 
         window.stopSearchAnimation = () => {
             isSearching = false;
-            gsap.to(directionalLight, { intensity: 2.5, duration: 1.5, ease: "power2.inOut" });
-            gsap.to(blueLight, { intensity: 2, duration: 1.5, ease: "power2.inOut" });
-            gsap.to(particlesMaterial, { size: 0.03, duration: 1.5, ease: "power2.inOut" });
-        };
-
-        // Theme sync for Sphere
-        const syncSphereTheme = (isDark) => {
-            if (isDark) {
-                gsap.to(material.color, {r: 0.1, g: 0.1, b: 0.2, duration: 1});
-            } else {
-                gsap.to(material.color, {r: 1, g: 1, b: 1, duration: 1});
-            }
+            gsap.to(torus.scale, {x: 1, y: 1, z: 1, duration: 1.5, ease: "power2.inOut"});
         };
 
         // Hover magnetic effect on input area
         const chatFormEl = document.getElementById('chat-form');
         chatFormEl.addEventListener('mouseenter', () => {
-            if(!isSearching) gsap.to(sphere.position, {z: 0.5, duration: 0.8, ease: "power2.out"});
+            if(!isSearching) gsap.to(camera.position, {z: 9, duration: 1, ease: "power2.out"});
         });
         chatFormEl.addEventListener('mouseleave', () => {
-            if(!isSearching) gsap.to(sphere.position, {z: 0, duration: 0.8, ease: "power2.out"});
+            if(!isSearching) gsap.to(camera.position, {z: 10, duration: 1, ease: "power2.out"});
         });
     </script>
 
@@ -324,11 +302,11 @@
             const showLoadingIndicator = () => {
                 const loadingHTML = `
                     <div id="loading-indicator" class="flex justify-start message-pop-in">
-                        <div class="bg-white/80 dark:bg-slate-700/80 backdrop-blur-sm text-gray-800 dark:text-gray-200 p-4 rounded-2xl max-w-sm shadow-md border border-white/20">
+                        <div class="bg-white/5 backdrop-blur-md border border-white/10 text-white p-4 rounded-2xl max-w-sm shadow-lg">
                             <div class="flex items-center space-x-2">
-                                <span class="w-2.5 h-2.5 bg-orange-500 rounded-full animate-bounce"></span>
-                                <span class="w-2.5 h-2.5 bg-orange-500 rounded-full animate-bounce" style="animation-delay: 0.1s;"></span>
-                                <span class="w-2.5 h-2.5 bg-orange-500 rounded-full animate-bounce" style="animation-delay: 0.2s;"></span>
+                                <span class="w-2.5 h-2.5 bg-white/50 rounded-full animate-bounce"></span>
+                                <span class="w-2.5 h-2.5 bg-white/50 rounded-full animate-bounce" style="animation-delay: 0.1s;"></span>
+                                <span class="w-2.5 h-2.5 bg-white/50 rounded-full animate-bounce" style="animation-delay: 0.2s;"></span>
                             </div>
                         </div>
                     </div>`;
@@ -339,7 +317,6 @@
             const removeLoadingIndicator = () => {
                 const indicator = document.getElementById('loading-indicator');
                 if (indicator) {
-                    // Fade out nicely
                     indicator.style.transition = 'opacity 0.3s ease';
                     indicator.style.opacity = '0';
                     setTimeout(() => indicator.remove(), 300);
@@ -348,41 +325,41 @@
 
             const renderWelcomeMessage = () => {
                 const welcomeHTML = `
-                    <div class="bg-white/90 dark:bg-slate-700/90 backdrop-blur-md text-gray-800 dark:text-gray-200 p-5 rounded-2xl max-w-sm shadow-lg border border-white/20">
-                        <p class="font-bold text-lg mb-1">Welcome!</p>
-                        <p class="text-sm opacity-90">Ask me for song lyrics or info. I'll search the universe for you.</p>
+                    <div class="bg-white/5 backdrop-blur-md text-white p-6 rounded-2xl max-w-sm shadow-xl border border-white/10">
+                        <h2 class="text-3xl font-light tracking-tight mb-2 opacity-90">Glass<br><span class="font-bold">Morphism</span></h2>
+                        <p class="text-xl font-light opacity-50 mb-4">mockup.</p>
+                        <p class="text-sm opacity-60">Ask me for song lyrics or info. I'll search the universe for you.</p>
                     </div>`;
                 addMessage(welcomeHTML, 'bot');
             };
 
             const renderUserMessage = (message) => {
                 const userMessageHTML = `
-                    <div class="bg-gradient-to-br from-orange-500 to-orange-600 text-white p-4 rounded-2xl max-w-sm shadow-lg shadow-orange-500/30">
+                    <div class="bg-white/10 backdrop-blur-md border border-white/10 text-white p-4 rounded-2xl max-w-sm shadow-lg">
                         ${message}
                     </div>`;
                 addMessage(userMessageHTML, 'user');
             };
 
             const renderLyricsCard = (data) => {
-                // Use a default image if album_art is missing
                 const albumArt = data.album_art || 'https://placehold.co/80x80/1e293b/a3a3a3?text=N/A';
                 const lyricsHTML = `
-                    <div class="bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl rounded-3xl p-5 w-full max-w-lg shadow-xl border border-white/20 dark:border-white/5">
-                        <div class="flex items-start space-x-4">
-                            <img src="${albumArt}" alt="Album Art" class="w-24 h-24 rounded-2xl object-cover shadow-lg border border-gray-100 dark:border-slate-700">
+                    <div class="bg-white/5 backdrop-blur-xl rounded-3xl p-6 w-full max-w-lg shadow-2xl border border-white/10">
+                        <div class="flex items-start space-x-5">
+                            <img src="${albumArt}" alt="Album Art" class="w-24 h-24 rounded-2xl object-cover shadow-lg border border-white/10">
                             <div class="flex-1 py-1">
-                                <h2 class="font-black text-xl text-gray-900 dark:text-white leading-tight mb-1">${data.title}</h2>
-                                <p class="text-sm font-medium text-orange-600 dark:text-orange-400">${data.artist}</p>
+                                <h2 class="font-bold text-2xl text-white tracking-tight leading-tight mb-1">${data.title}</h2>
+                                <p class="text-sm font-medium text-white/50">${data.artist}</p>
                             </div>
                         </div>
-                        <div class="mt-5 pt-5 border-t border-slate-200 dark:border-slate-700/50 relative">
-                            <div class="absolute top-0 left-0 w-full h-8 bg-gradient-to-b from-white/90 dark:from-slate-800/90 to-transparent pointer-events-none"></div>
-                            <p class="text-gray-700 dark:text-gray-300 whitespace-pre-wrap text-[15px] leading-relaxed font-medium">${data.content}</p>
+                        <div class="mt-6 pt-6 border-t border-white/10 relative">
+                            <div class="absolute top-0 left-0 w-full h-8 bg-gradient-to-b from-transparent to-transparent pointer-events-none"></div>
+                            <p class="text-white/80 whitespace-pre-wrap text-[15px] leading-relaxed font-light">${data.content}</p>
                         </div>
                         ${data.spotify_url ? `
                         <div class="mt-6">
-                            <a href="${data.spotify_url}" target="_blank" rel="noopener noreferrer" class="flex items-center justify-center space-x-2 w-full bg-[#1DB954] hover:bg-[#1ed760] text-white font-bold py-3 px-4 rounded-xl transition-all duration-300 shadow-lg shadow-green-500/20 hover:shadow-green-500/40 hover:-translate-y-1">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.24 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15.001 10.62 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.6.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
+                            <a href="${data.spotify_url}" target="_blank" rel="noopener noreferrer" class="flex items-center justify-center space-x-2 w-full bg-white/10 hover:bg-white/20 text-white font-medium py-3 px-4 rounded-xl border border-white/10 transition-all duration-300">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.24 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15.001 10.62 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.6.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
                                 <span>Listen on Spotify</span>
                             </a>
                         </div>
@@ -393,12 +370,12 @@
             
             const renderErrorMessage = (message) => {
                 const errorHTML = `
-                    <div class="bg-red-50 dark:bg-red-900/40 border-l-4 border-red-500 text-red-700 dark:text-red-300 px-5 py-4 rounded-xl relative max-w-sm shadow-md" role="alert">
+                    <div class="bg-red-500/10 border border-red-500/30 text-red-400 px-5 py-4 rounded-xl relative max-w-sm shadow-md" role="alert">
                         <strong class="font-bold flex items-center space-x-2">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                            <span>Oops!</span>
+                            <span>Error</span>
                         </strong>
-                        <span class="block mt-1 text-sm">${message}</span>
+                        <span class="block mt-1 text-sm opacity-90">${message}</span>
                     </div>`;
                 addMessage(errorHTML, 'bot');
             };
