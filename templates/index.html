@@ -90,19 +90,19 @@
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
         camera.position.z = 10;
 
-        // Metallic Torus
-        const torusGeo = new THREE.TorusGeometry(3.5, 0.8, 64, 100);
+        // Metallic Torus (Scaled up to bulge out at the bottom)
+        const torusGeo = new THREE.TorusGeometry(6, 1.5, 64, 100);
         const metallicMat = new THREE.MeshStandardMaterial({
-            color: 0x888888,
+            color: 0xaaaaaa,
             metalness: 1.0,
-            roughness: 0.1,
+            roughness: 0.15,
         });
         const torus = new THREE.Mesh(torusGeo, metallicMat);
-        torus.position.set(0, 0, -2);
+        torus.position.set(2, -4, -3); // Spilling out from bottom right
         scene.add(torus);
 
-        // Glass Sphere
-        const geometry = new THREE.SphereGeometry(1.5, 64, 64);
+        // Glass Sphere (Moved to top left edge)
+        const geometry = new THREE.SphereGeometry(2.5, 64, 64);
         const material = new THREE.MeshPhysicalMaterial({
             color: 0xffffff,
             metalness: 0.1,
@@ -114,13 +114,18 @@
             clearcoatRoughness: 0.1,
         });
         const sphere = new THREE.Mesh(geometry, material);
-        sphere.position.set(-2.5, 1, 1);
+        sphere.position.set(-4, 3, -1);
         scene.add(sphere);
         
-        // Secondary floating sphere
-        const sphere2 = new THREE.Mesh(new THREE.SphereGeometry(0.8, 32, 32), metallicMat);
-        sphere2.position.set(3, -2, 2);
+        // Secondary floating sphere (Right edge)
+        const sphere2 = new THREE.Mesh(new THREE.SphereGeometry(1.5, 64, 64), metallicMat);
+        sphere2.position.set(5, 1, -2);
         scene.add(sphere2);
+
+        // Third floating sphere (Bottom left edge)
+        const sphere3 = new THREE.Mesh(new THREE.SphereGeometry(0.8, 32, 32), metallicMat);
+        sphere3.position.set(-4, -3, -1);
+        scene.add(sphere3);
 
         // Lighting
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
@@ -134,8 +139,8 @@
         light2.position.set(-5, -5, -5);
         scene.add(light2);
         
-        const orangeLight = new THREE.PointLight(0xf97316, 0, 10);
-        orangeLight.position.set(0, 0, 0);
+        const orangeLight = new THREE.PointLight(0xf97316, 0, 15);
+        orangeLight.position.set(0, 0, 2);
         scene.add(orangeLight);
 
         // Animation Loop
@@ -150,8 +155,9 @@
             torus.rotation.x = t * 0.3;
             torus.rotation.y = t * 0.2;
             
-            sphere.position.y = 1 + Math.sin(t) * 0.2;
-            sphere2.position.y = -2 + Math.cos(t * 1.5) * 0.2;
+            sphere.position.y = 3 + Math.sin(t) * 0.2;
+            sphere2.position.y = 1 + Math.cos(t * 1.5) * 0.2;
+            sphere3.position.y = -3 + Math.sin(t * 1.2) * 0.15;
             
             if (isSearching) {
                 torus.rotation.x += 0.02;
