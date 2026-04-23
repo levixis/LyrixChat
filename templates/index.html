@@ -44,13 +44,13 @@
     </style>
 </head>
 
-<body class="bg-[#050505] text-white font-sans flex items-center justify-center min-h-screen p-2 sm:p-4 overflow-hidden relative">
+<body class="bg-[#050505] text-white font-sans flex items-center justify-center min-h-screen sm:p-4 overflow-hidden relative">
 
     <!-- 3D Canvas Background -->
     <canvas id="bg-canvas" class="absolute top-0 left-0 w-full h-full -z-10"></canvas>
 
     <!-- Glassmorphism Chat Container -->
-    <div id="chat-container" class="w-full max-w-3xl h-[95vh] sm:h-[90vh] flex flex-col bg-white/[0.03] backdrop-blur-3xl rounded-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.8)] overflow-hidden border border-white/10 z-10 transition-all duration-300">
+    <div id="chat-container" class="w-full h-[100dvh] sm:h-[90vh] sm:max-w-3xl flex flex-col bg-white/[0.03] backdrop-blur-3xl rounded-none sm:rounded-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.8)] overflow-hidden border-0 sm:border border-white/10 z-10 transition-all duration-300">
         
         <header class="flex items-center justify-between p-5 bg-transparent z-10 border-b border-white/5">
             <div class="flex items-center space-x-2">

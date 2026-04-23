@@ -205,9 +205,9 @@ def scrape_lyrics(url):
         logging.error(f"Lyrics scraping error: {e}")
         return "Could not retrieve lyrics."
 
-def get_lyrics(title, artist, url):
+def get_lyrics(title, artist, url, original_search_term):
     """Try robust APIs first, fallback to scraping."""
-    search_query = f"{title} {artist}"
+    search_query = original_search_term or f"{title} {artist}"
     
     # 1. Try syncedlyrics (Best Aggregator: Megalobiz, Musixmatch, etc.)
     try:
@@ -243,7 +243,24 @@ def get_lyrics(title, artist, url):
         logging.error(f"lyrics.ovh error: {e}")
 
     # 4. Fallback to Genius Scraping (usually works locally but fails on cloud)
-    return scrape_lyrics(url)
+    scraped = scrape_lyrics(url)
+    if "could not be scraped" not in scraped and "Could not retrieve" not in scraped:
+        return scraped
+        
+    # 5. ULTIMATE FALLBACK: Generate with Gemini AI
+    try:
+        logging.info("Falling back to Gemini AI for lyrics generation.")
+        prompt = f"Please provide the full lyrics for the song '{title}' by '{artist}'. Only output the raw lyrics text, no conversational filler or markdown code blocks."
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt,
+            config=types.GenerateContentConfig(temperature=0.2)
+        )
+        return response.text.strip()
+    except Exception as e:
+        logging.error(f"Gemini fallback error: {e}")
+        
+    return scraped
 
 def search_spotify_track(song_name, artist_name=None):
     if not sp: return {}
@@ -283,7 +300,7 @@ def handle_chat():
         return jsonify({'type': 'error', 'content': f"Sorry, I couldn't find a confident match for '{message}'."})
 
     # Step 3: We have a winner, get the rest of the data
-    lyrics = get_lyrics(genius_data['title'], genius_data['artist'], genius_data['url'])
+    lyrics = get_lyrics(genius_data['title'], genius_data['artist'], genius_data['url'], message)
     spotify_data = search_spotify_track(genius_data['title'], genius_data['artist'])
     album_art = spotify_data.get('album_art') or genius_data.get('cover_art')
 
