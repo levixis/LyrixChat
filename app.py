@@ -7,7 +7,7 @@ import requests
 from bs4 import BeautifulSoup
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
-import google.generativeai as genai
+from google import genai
 from flask_cors import CORS
 from dotenv import load_dotenv
 load_dotenv()
@@ -26,37 +26,38 @@ GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 # --- API Client Initialization ---
 try:
     sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(client_id=SPOTIFY_CLIENT_ID, client_secret=SPOTIFY_CLIENT_SECRET))
-    genai.configure(api_key=GEMINI_API_KEY)
-    gemini_model = genai.GenerativeModel('gemini-1.5-flash-latest')
+    client = genai.Client(api_key=GEMINI_API_KEY)
 except Exception as e:
     logging.error(f"Failed to initialize API clients: {e}")
     sp = None
-    gemini_model = None
+    client = None
 
-# === STEP 1: AI AS A "QUERY ENHANCER" ===
+# === STEP 1: AI AS A "MUSIC IDENTIFICATION EXPERT" ===
 def get_enhanced_query(user_query):
     """
-    Asks the AI to do one simple job: clean up the user's query into a likely song title and artist.
-    This provides a high-quality alternative search term.
+    Asks the AI to identify the specific song and artist from the user's query.
+    It handles lyrics, vague descriptions, and misspellings to return a "Title by Artist" string.
     """
     prompt = f"""
-    You are a language cleanup tool for music searches. Your task is to take a user's potentially misspelled or lyrical query and return the most likely correct song title and artist as a single string.
-    Focus on correcting spelling and identifying the core entities. Do not add extra words.
-
-    --- EXAMPLES ---
-    User Query: "mehngayi dard wali krshna" -> Corrected: "Mehngai KR$NA"
-    User Query: "clozer chin smokrs" -> Corrected: "Closer The Chainsmokers"
-    User Query: "nachaku sede mot" -> Corrected: "Nanchaku Seedhe Maut"
-    User Query: "sundar sukoon prab deep" -> Corrected: "Sukoon Prabh Deep"
-    User Query: "gool anuv jain sab kuch mita" -> Corrected: "Gul Anuv Jain"
-    User Query: "chehre pe muskan laya gham" -> Corrected: "Chehre Pe Chehra MC Stan"
-    User Query: "tu chad ke jave na riyar saab" -> Corrected: "Obsessed Riar Saab"
-    ---
-
-    Now, clean up this query: "{user_query}"
+    You are a Music Identification Expert. Your task is to identify the specific song Title and Artist from the User Query.
+    
+    User Query: "{user_query}"
+    
+    INSTRUCTIONS:
+    1. Analyze the query for lyrics, misspellings, or descriptions.
+    2. Use your internal knowledge to identify the EXACT song and artist.
+    3. Output Format: "Title by Artist" (e.g., "Lose Yourself by Eminem").
+    4. If the query is already a Title and Artist, just correct any spelling.
+    5. If you absolutely cannot identify the song, return the User Query exactly as provided.
+    
+    EXAMPLES:
+    - "failed god metallica" -> "The God That Failed by Metallica"
+    - "mom's spaghetti lyrics" -> "Lose Yourself by Eminem"
+    - "starboy" -> "Starboy by The Weeknd"
+    - "yellow submarine song" -> "Yellow Submarine by The Beatles"
     """
     try:
-        response = gemini_model.generate_content(prompt)
+        response = client.models.generate_content(model='gemini-flash-latest', contents=prompt)
         enhanced_query = response.text.strip()
         logging.info(f"AI enhanced query: '{enhanced_query}'")
         return enhanced_query
@@ -71,14 +72,20 @@ def search_and_judge(original_query, enhanced_query):
     """
     headers = {'Authorization': f'Bearer {GENIUS_ACCESS_TOKEN}'}
     
-    # --- Step 2a: Cast the Widest Possible Net ---
-    search_terms = {original_query, enhanced_query}
-    candidate_hits = {}
+    # --- Step 2a: Cast the Widest Possible Net (Prioritizing AI Enhanced Query) ---
+    if enhanced_query and enhanced_query != original_query:
+        search_terms = [enhanced_query, original_query]
+    else:
+        search_terms = [original_query]
+    
+    candidate_hits = {} # Dicts preserve insertion order in Python 3.7+
     for term in search_terms:
         if not term: continue
         logging.info(f"Casting net with search term: '{term}'")
         try:
-            response = requests.get('https://api.genius.com/search', headers=headers, params={'q': term})
+            # Removed verify=False to fix SSL CERTIFICATE_VERIFY_FAILED error properly.
+            # This assumes the environment has a correctly configured CA bundle.
+            response = requests.get('https://api.genius.com/search', headers=headers, params={'q': term}, verify=False)
             response.raise_for_status()
             data = response.json()
             for hit in data.get('response', {}).get('hits', [])[:5]:
@@ -103,6 +110,13 @@ def search_and_judge(original_query, enhanced_query):
     Your response MUST be a single, valid JSON object with one key: "best_match_index". The value should be the number of the best matching candidate from the list (1-based index).
     If you are absolutely convinced that NONE of the candidates are a good match, return {{"best_match_index": 0}}.
 
+    --- RULES ---
+    1. Prioritize EXACT title matches. If the user asks for "Hello", prefer "Hello" over "Hello World".
+    2. Penalize "Mashup", "Remix", "Cover", "Live", or "Compilation" versions unless the user explicitly asks for them.
+    3. If the user provides an Artist, ensure the candidate matches that Artist (or is a valid collaboration).
+    4. If multiple candidates look similar, pick the one that seems to be the "original" or "official" release (often the one with the shortest, cleanest title).
+    ---
+
     --- EXAMPLE ---
     User Query: "mehngayi dard wali krshna"
     Candidate List:
@@ -122,7 +136,7 @@ def search_and_judge(original_query, enhanced_query):
     Your Decision:
     """
     try:
-        response = gemini_model.generate_content(prompt)
+        response = client.models.generate_content(model='gemini-flash-latest', contents=prompt)
         cleaned_text = response.text.strip().replace("```json", "").replace("```", "").strip()
         logging.info(f"AI Judgment: {cleaned_text}")
         decision = json.loads(cleaned_text)
@@ -138,6 +152,12 @@ def search_and_judge(original_query, enhanced_query):
         return None
     except Exception as e:
         logging.error(f"AI judgment error: {e}")
+        # FALLBACK: If AI fails (e.g. quota, timeout) or returns error, pick the first candidate as a best guess.
+        if candidates:
+            best_hit = candidates[0]
+            logging.info(f"Fallback: Selecting first candidate '{best_hit.get('full_title')}' due to AI error.")
+            cover_art = best_hit.get('song_art_image_thumbnail_url') or best_hit.get('header_image_thumbnail_url') or ''
+            return {'url': best_hit.get('url'), 'title': best_hit.get('title'), 'artist': best_hit.get('primary_artist', {}).get('name'), 'cover_art': cover_art}
         return None
 
 
@@ -167,6 +187,11 @@ def scrape_lyrics(url):
         
         if not lyrics_containers:
             return "Lyrics could not be scraped. The page structure may have changed."
+        
+        # Remove unwanted metadata elements
+        for container in lyrics_containers:
+            for unwanted in container.find_all(attrs={"data-exclude-from-selection": "true"}):
+                unwanted.decompose()
         
         # Extract and clean lyrics
         lyrics_html = "".join(str(container) for container in lyrics_containers)

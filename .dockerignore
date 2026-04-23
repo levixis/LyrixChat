@@ -1,0 +1,11 @@
+venv/
+__pycache__/
+*.pyc
+.git/
+.DS_Store
+.env
+debug_search.py
+reproduce_issue.py
+test_model.py
+find_working_model.py
+list_models.py
