@@ -6,3 +6,4 @@ beautifulsoup4==4.13.3
 spotipy==2.25.1
 python-dotenv==1.1.0
 gunicorn==23.0.0
+syncedlyrics==1.0.1

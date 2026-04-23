@@ -207,9 +207,23 @@ def scrape_lyrics(url):
 
 def get_lyrics(title, artist, url):
     """Try robust APIs first, fallback to scraping."""
-    # 1. Try LRCLIB
+    search_query = f"{title} {artist}"
+    
+    # 1. Try syncedlyrics (Best Aggregator: Megalobiz, Musixmatch, etc.)
     try:
-        search_query = f"{title} {artist}"
+        import syncedlyrics
+        lrc = syncedlyrics.search(search_query)
+        if lrc:
+            # Remove [00:00.00] timestamps if present
+            plain = re.sub(r'\[\d{2}:\d{2}\.\d{2,3}\]', '', lrc)
+            # Remove Genius extra headers like "9 Contributors"
+            plain = re.sub(r'^\d+\sContributors.*?\n', '', plain, flags=re.IGNORECASE|re.DOTALL)
+            return plain.strip()
+    except Exception as e:
+        logging.error(f"syncedlyrics error: {e}")
+
+    # 2. Try LRCLIB
+    try:
         response = requests.get(f"https://lrclib.net/api/search?q={search_query}", timeout=5)
         if response.status_code == 200:
             data = response.json()
@@ -218,7 +232,7 @@ def get_lyrics(title, artist, url):
     except Exception as e:
         logging.error(f"LRCLIB error: {e}")
         
-    # 2. Try lyrics.ovh
+    # 3. Try lyrics.ovh
     try:
         response = requests.get(f"https://api.lyrics.ovh/v1/{artist}/{title}", timeout=5)
         if response.status_code == 200:
@@ -228,7 +242,7 @@ def get_lyrics(title, artist, url):
     except Exception as e:
         logging.error(f"lyrics.ovh error: {e}")
 
-    # 3. Fallback to Genius Scraping (usually works locally but fails on cloud)
+    # 4. Fallback to Genius Scraping (usually works locally but fails on cloud)
     return scrape_lyrics(url)
 
 def search_spotify_track(song_name, artist_name=None):
